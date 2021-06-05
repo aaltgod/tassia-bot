@@ -45,7 +45,7 @@ func main() {
 		var msg tgbotapi.MessageConfig
 
 		switch update.Message.Text {
-		case "/df":
+		case "/df", "/df@GotassiaBot":
 			p := exec.Command("df", "-h")
 
 			var out bytes.Buffer
