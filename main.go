@@ -28,7 +28,7 @@ func main() {
 
 	bot.Debug = true
 
-	log.Printf("Authorized useraname: %s", bot.Self.UserName)
+	log.Println("Authorized useraname: ", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -43,7 +43,7 @@ func main() {
 			continue
 		}
 
-		log.Printf("[%s]: %s", update.Message.From.UserName, update.Message.Text)
+		log.Printf("[%s]: %s\n", update.Message.From.UserName, update.Message.Text)
 
 		var msg tgbotapi.MessageConfig
 
@@ -72,7 +72,7 @@ func main() {
 
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, temp)
 		default:
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Hi there")
+			continue
 		}
 
 		msg.ReplyToMessageID = update.Message.MessageID
