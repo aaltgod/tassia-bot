@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 
+	"github.com/PuerkitoBio/goquery"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/joho/godotenv"
 )
@@ -58,6 +61,16 @@ func main() {
 			}
 
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, out.String())
+		case "/t", "/t@GotassiaBot":
+			temp, err := getMoscowTemperature()
+			if err != nil {
+				log.Println(err)
+				msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Internal error. Sorry")
+
+				break
+			}
+
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, temp)
 		default:
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Hi there")
 		}
@@ -66,4 +79,34 @@ func main() {
 
 		bot.Send(msg)
 	}
+}
+
+func getMoscowTemperature() (string, error) {
+
+	resp, err := http.Get("https://yandex.ru/pogoda/?lat=55.85489273&lon=37.47623444")
+	if err != nil {
+		log.Println(err)
+
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Println("response status code ", resp.StatusCode)
+
+		return "", fmt.Errorf("%s", "error response")
+	}
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Println(err)
+
+		return "", err
+	}
+
+	result := doc.Find("div.link__feelings.fact__feelings").Find("div.link__condition.day-anchor").Text()
+	result += "\nТекущая температура: " + doc.Find("div.temp.fact__temp.fact__temp_size_s").Find("span.temp__value.temp__value_with-unit").Text() + "°"
+	result += "\nОщущается как: " + doc.Find("div.link__feelings.fact__feelings").Find("span.temp__value.temp__value_with-unit").Text() + "°"
+
+	return result, nil
 }
