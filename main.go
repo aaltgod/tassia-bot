@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -28,7 +29,7 @@ func main() {
 
 	bot.Debug = true
 
-	log.Println("Authorized useraname: ", bot.Self.UserName)
+	log.Println("Authorized username: ", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -37,6 +38,8 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
+
+	var usersIDS = make(map[int]time.Time)
 
 	for update := range updates {
 		if update.Message == nil {
@@ -71,6 +74,25 @@ func main() {
 			}
 
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, temp)
+		case "/sleep", "/sleep@GotassiaBot":
+			date := update.Message.Time().UTC()
+
+			userID := update.Message.From.ID
+			if _, exists := usersIDS[userID]; !exists  {
+				usersIDS[userID] = date
+
+				msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Таймер запущен. Сладких снов :)")
+
+				break
+			}
+
+			sleepTime := date.Sub(usersIDS[userID])
+			delete(usersIDS, userID)
+
+			msg = tgbotapi.NewMessage(
+				update.Message.Chat.ID,
+				fmt.Sprintf("Ты поспонькал %s", sleepTime.String()),
+				)
 		default:
 			continue
 		}
