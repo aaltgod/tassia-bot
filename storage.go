@@ -2,11 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/lib/pq"
-)
-
-var (
-	DSN = "host=localhost port=5432 user=postgres dbname=storage sslmode=disable"
+	"os"
 )
 
 type User struct {
@@ -29,6 +27,12 @@ func NewUserStorage() *UserStorage {
 }
 
 func CreateConnection() (*sql.DB, error) {
+
+	DSN := fmt.Sprintf(
+		"postgresql://%s:%s@localhost:%s/storage?sslmode=disable",
+		os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_PORT"),
+	)
 
 	db, err := sql.Open("postgres", DSN)
 	if err != nil {

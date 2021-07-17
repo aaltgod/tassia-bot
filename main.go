@@ -18,6 +18,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
+
 	err = PrepareStorage(db)
 	if err != nil {
 		log.Fatalln(err)
