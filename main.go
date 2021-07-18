@@ -5,6 +5,7 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -15,14 +16,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	time.Sleep(time.Second * 15)
+
 	db, err := CreateConnection()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-
-	err = PrepareStorage(db)
-	if err != nil {
+	if err = PrepareStorage(db); err != nil {
 		log.Fatalln(err)
 	}
 	db.Close()

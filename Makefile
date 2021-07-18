@@ -10,5 +10,5 @@ build: clean
 	docker-compose up --build -d
 
 clean:
-	docker-compose stop || true
+	docker-compose down || true
 	rm ./$(APP_NAME) || true
