@@ -85,7 +85,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 		msg.ReplyMarkup = keyboard
 	case "sleepstat":
 		if message.Chat.IsGroup() {
-			users, err := b.storage.GetStats()
+			users, err := b.storage.GetStats(message.Chat.ID)
 			if err != nil {
 				return err
 			}
@@ -107,7 +107,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 
 		userName := message.From.UserName
 
-		user, err := b.storage.GetStat(userName)
+		user, err := b.storage.GetStat(userName, message.Chat.ID)
 		if err != nil {
 			return err
 		}
@@ -158,13 +158,14 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 
 		sleepTime := stopTime.Sub(startTime)
 
-		statUser, err := b.storage.GetStat(userName)
+		statUser, err := b.storage.GetStat(userName, message.Message.Chat.ID)
 		if err != nil {
 			return err
 		}
 
 		if statUser.Counter == 0 {
 			statUser.Name = userName
+			statUser.Group = message.Message.Chat.ID
 			statUser.Counter = 1
 			statUser.AverageTimeSleep = sleepTime.Hours()
 

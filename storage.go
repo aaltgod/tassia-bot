@@ -9,6 +9,7 @@ import (
 
 type User struct {
 	Name string `json:"username"`
+	Group int64 `json:"group"`
 	Start string `json:"start_date"`
 	Stop string `json:"stop_date"`
 	Counter int `json:"counter"`
@@ -17,9 +18,9 @@ type User struct {
 
 type Storage interface {
 	CreateStat(*User) error
-	GetStat(userName string) (*User, error)
+	GetStat(userName string, group int64) (*User, error)
 	UpdateStat(*User) error
-	GetStats() ([]*User, error)
+	GetStats(group int64) ([]*User, error)
 	CreateStartDate(user *User) error
 	GetDate(userName string) (*User, error)
 	UpdateStopDate(user *User) error
@@ -52,7 +53,7 @@ func PrepareStorage(db *sql.DB) error {
 
 	qs := []string{
 		`DROP TABLE IF EXISTS stats;`,
-		`CREATE TABLE stats(username VARCHAR(20), counter INTEGER, averagetimesleep NUMERIC(30, 2));`,
+		`CREATE TABLE stats(username VARCHAR(20), group_id INTEGER, counter INTEGER, averagetimesleep NUMERIC(30, 2));`,
 		`DROP TABLE IF EXISTS dates;`,
 		`CREATE TABLE dates(username VARCHAR(20), start_date VARCHAR(100), stop_date VARCHAR(100));`,
 	}
@@ -75,8 +76,8 @@ func (u *UserStorage) CreateStat(user *User) error {
 	defer db.Close()
 
 	_, err = db.Exec(
-		"INSERT INTO stats(username, counter, averagetimesleep) VALUES($1, $2, $3)",
-		user.Name, user.Counter, user.AverageTimeSleep,
+		"INSERT INTO stats(username, group_id, counter, averagetimesleep) VALUES($1, $2, $3, $4)",
+		user.Name, user.Group, user.Counter, user.AverageTimeSleep,
 		)
 	if err != nil {
 		return err
@@ -85,7 +86,7 @@ func (u *UserStorage) CreateStat(user *User) error {
 	return nil
 }
 
-func (u *UserStorage) GetStat(userName string) (*User, error) {
+func (u *UserStorage) GetStat(userName string, group int64) (*User, error) {
 
 	db, err := CreateConnection()
 	if err != nil {
@@ -95,10 +96,11 @@ func (u *UserStorage) GetStat(userName string) (*User, error) {
 
 	var user User
 	user.Name = userName
+	user.Group = group
 
 	row := db.QueryRow(
-		"SELECT counter, averagetimesleep FROM stats WHERE username=$1",
-		userName,
+		"SELECT counter, averagetimesleep FROM stats WHERE username=$1 AND group_id=$2",
+		userName, group,
 		)
 	row.Scan(&user.Counter, &user.AverageTimeSleep)
 
@@ -114,8 +116,8 @@ func (u *UserStorage) UpdateStat(user *User) error {
 	defer db.Close()
 
 	_, err = db.Exec(
-		"UPDATE stats SET counter=$1, averagetimesleep=$2 WHERE username=$3",
-		user.Counter, user.AverageTimeSleep, user.Name,
+		"UPDATE stats SET counter=$1, averagetimesleep=$2 WHERE username=$3 AND group_id=$4",
+		user.Counter, user.AverageTimeSleep, user.Name, user.Group,
 		)
 	if err != nil {
 		return err
@@ -124,7 +126,7 @@ func (u *UserStorage) UpdateStat(user *User) error {
 	return nil
 }
 
-func (u *UserStorage) GetStats() ([]*User, error) {
+func (u *UserStorage) GetStats(group int64) ([]*User, error) {
 
 	db, err := CreateConnection()
 	if err != nil {
@@ -135,7 +137,8 @@ func (u *UserStorage) GetStats() ([]*User, error) {
 	var users []*User
 
 	rows, err := db.Query(
-		"SELECT username, counter, averagetimesleep FROM stats",
+		"SELECT username, counter, averagetimesleep FROM stats WHERE group_id=$1",
+		group,
 		)
 	if err != nil {
 		return nil, err

@@ -16,7 +16,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	time.Sleep(time.Second * 15)
+	time.Sleep(time.Second * 3)
 
 	db, err := CreateConnection()
 	if err != nil {
