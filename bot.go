@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
 )
@@ -11,13 +10,13 @@ const (
 )
 
 type Bot struct {
-	botApi *tgbotapi.BotAPI
+	botApi  *tgbotapi.BotAPI
 	storage Storage
 }
 
 func NewBot(botApi *tgbotapi.BotAPI, storage Storage) *Bot {
 	return &Bot{
-		botApi: botApi,
+		botApi:  botApi,
 		storage: storage}
 }
 
@@ -32,10 +31,6 @@ func (b *Bot) Start() error {
 	}
 
 	for update := range updates {
-		if update.InlineQuery != nil {
-			fmt.Println(update.InlineQuery)
-			continue
-		}
 		if update.Message == nil && update.CallbackQuery == nil {
 			continue
 		}

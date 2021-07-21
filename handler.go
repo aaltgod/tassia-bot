@@ -84,10 +84,15 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(button)
 		msg.ReplyMarkup = keyboard
 	case "sleepstat":
-		if message.Chat.IsChannel() {
+		if message.Chat.IsGroup() {
 			users, err := b.storage.GetStats()
 			if err != nil {
 				return err
+			}
+
+			if len(users) == 0 {
+				msg = tgbotapi.NewMessage(message.Chat.ID, "У этой группы нет статистики")
+				break
 			}
 
 			result := fmt.Sprintf("%-15s %-10s %-10s\n\n", "[nickname]", "[times]", "[average]")
