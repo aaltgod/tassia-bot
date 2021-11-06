@@ -4,7 +4,7 @@ services:
     image: 'postgres:latest'
     restart: always
     ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+      - ${POSTGRES_EXTERNAL_PORT}:${POSTGRES_INTERNAL_PORT}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

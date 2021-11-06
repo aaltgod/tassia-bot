@@ -1,13 +1,14 @@
-package main
+package temperature
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"log"
 	"net/http"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
-func getMoscowTemperature() (string, error) {
+func GetMoscowTemperature() (string, error) {
 
 	resp, err := http.Get("https://yandex.ru/pogoda/?lat=55.85489273&lon=37.47623444")
 	if err != nil {
@@ -28,11 +29,11 @@ func getMoscowTemperature() (string, error) {
 	}
 
 	result := doc.Find("div.link__feelings.fact__feelings").Find(
-	"div.link__condition.day-anchor").Text()
+		"div.link__condition.day-anchor").Text()
 	result += "\nТекущая температура: " + doc.Find("div.temp.fact__temp.fact__temp_size_s").Find(
-	"span.temp__value.temp__value_with-unit").Text() + "°"
+		"span.temp__value.temp__value_with-unit").Text() + "°"
 	result += "\nОщущается как: " + doc.Find("div.link__feelings.fact__feelings").Find(
-	"span.temp__value.temp__value_with-unit").Text() + "°"
+		"span.temp__value.temp__value_with-unit").Text() + "°"
 
 	return result, nil
 }

@@ -1,11 +1,15 @@
 package main
 
 import (
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"time"
+
+	b "github.com/alyaskastorm/tassia-bot/internal/bot"
+	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -18,17 +22,17 @@ func main() {
 
 	time.Sleep(time.Second * 3)
 
-	db, err := CreateConnection()
+	db, err := postgres.CreateConnection()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	if err = PrepareStorage(db); err != nil {
+	if err = postgres.PrepareStorage(db); err != nil {
 		log.Fatalln(err)
 	}
 	db.Close()
 
-	storage := NewUserStorage()
+	storage := postgres.NewUserStorage()
 
 	botApi, err := tgbotapi.NewBotAPI(os.Getenv("API_TOKEN"))
 	if err != nil {
@@ -39,7 +43,8 @@ func main() {
 
 	log.Println("Authorized username: ", botApi.Self.UserName)
 
-	bot := NewBot(botApi, storage)
+	usersIdsInInteractive := make(map[int32]string)
+	bot := b.NewBot(botApi, usersIdsInInteractive, storage)
 
 	if err = bot.Start(); err != nil {
 		log.Fatalln(err)

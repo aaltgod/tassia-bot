@@ -1,10 +1,11 @@
-package main
+package storage
 
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
 	"os"
+
+	_ "github.com/lib/pq"
 )
 
 type User struct {
@@ -27,7 +28,7 @@ type Storage interface {
 	DeleteDate(userName string, chatID int64) error
 }
 
-type UserStorage struct {}
+type UserStorage struct{}
 
 func NewUserStorage() *UserStorage {
 	return &UserStorage{}
@@ -38,7 +39,7 @@ func CreateConnection() (*sql.DB, error) {
 	DSN := fmt.Sprintf(
 		"postgresql://%s:%s@localhost:%s/storage?sslmode=disable",
 		os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"),
-		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_EXTERNAL_PORT"),
 	)
 
 	db, err := sql.Open("postgres", DSN)
@@ -78,7 +79,7 @@ func (u *UserStorage) CreateStat(user *User) error {
 	_, err = db.Exec(
 		"INSERT INTO stats(username, chat_id, counter, averagetimesleep) VALUES($1, $2, $3, $4)",
 		user.Name, user.ChatID, user.Counter, user.AverageTimeSleep,
-		)
+	)
 	if err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ func (u *UserStorage) GetStat(userName string, chatID int64) (*User, error) {
 	row := db.QueryRow(
 		"SELECT counter, averagetimesleep FROM stats WHERE username=$1 AND chat_id=$2",
 		userName, chatID,
-		)
+	)
 	row.Scan(&user.Counter, &user.AverageTimeSleep)
 
 	return &user, nil
@@ -118,7 +119,7 @@ func (u *UserStorage) UpdateStat(user *User) error {
 	_, err = db.Exec(
 		"UPDATE stats SET counter=$1, averagetimesleep=$2 WHERE username=$3 AND chat_id=$4",
 		user.Counter, user.AverageTimeSleep, user.Name, user.ChatID,
-		)
+	)
 	if err != nil {
 		return err
 	}
@@ -139,7 +140,7 @@ func (u *UserStorage) GetStats(chatID int64) ([]*User, error) {
 	rows, err := db.Query(
 		"SELECT username, counter, averagetimesleep FROM stats WHERE chat_id=$1",
 		chatID,
-		)
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +211,7 @@ func (u *UserStorage) UpdateStopDate(user *User) error {
 	_, err = db.Exec(
 		"UPDATE dates SET stop_date=$1 WHERE username=$2 AND chat_id=$3",
 		user.Stop, user.Name, user.ChatID,
-		)
+	)
 	if err != nil {
 		return err
 	}
@@ -229,7 +230,7 @@ func (u *UserStorage) DeleteDate(userName string, chatID int64) error {
 	_, err = db.Exec(
 		"DELETE FROM dates WHERE username=$1 AND chat_id=$2",
 		userName, chatID,
-		)
+	)
 	if err != nil {
 		return err
 	}

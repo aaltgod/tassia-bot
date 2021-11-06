@@ -1,8 +1,10 @@
-package main
+package bot
 
 import (
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
+
+	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 const (
@@ -10,14 +12,16 @@ const (
 )
 
 type Bot struct {
-	botApi  *tgbotapi.BotAPI
-	storage Storage
+	botApi                *tgbotapi.BotAPI
+	usersIDsInInteractive map[int32]string
+	storage               postgres.Storage
 }
 
-func NewBot(botApi *tgbotapi.BotAPI, storage Storage) *Bot {
+func NewBot(botApi *tgbotapi.BotAPI, usersIDsInInteractive map[int32]string, storage postgres.Storage) *Bot {
 	return &Bot{
-		botApi:  botApi,
-		storage: storage}
+		botApi:                botApi,
+		usersIDsInInteractive: usersIDsInInteractive,
+		storage:               storage}
 }
 
 func (b *Bot) Start() error {
