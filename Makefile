@@ -2,8 +2,8 @@ APP_NAME=tassia
 
 run: build
 	@echo "====== BUILD and RUN app ======"
-	go mod download && go build -o $(APP_NAME) .
-	./$(APP_NAME)
+	go mod download && go build -o .bin/$(APP_NAME) cmd/main.go
+	.bin/$(APP_NAME)
 
 build: clean
 	@echo "====== RUN postgres ======"
@@ -11,4 +11,4 @@ build: clean
 
 clean:
 	docker-compose stop || true
-	rm ./$(APP_NAME) || true
+	rm .bin/$(APP_NAME) || true
