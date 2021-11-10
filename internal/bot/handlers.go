@@ -12,6 +12,8 @@ import (
 	constant "github.com/alyaskastorm/tassia-bot/pkg/constants"
 	temperature "github.com/alyaskastorm/tassia-bot/pkg/temperature"
 
+	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -44,18 +46,21 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 	case "sleep":
 		userName := message.From.UserName
 		chatID := message.Chat.ID
-		user, err := b.storage.GetDate(userName, chatID)
+
+		exists, err := b.dateStorage.DateIsExist(b.ctx, userName, chatID)
 		if err != nil {
 			return err
 		}
 
 		date := message.Time().UTC()
 
-		if user.Start == "" {
-			user.Start = date.Format(constant.Layout)
+		if !exists {
+			user := new(postgres.Date)
+			user.Name = userName
+			user.StartDate = date.Format(constant.Layout)
 			user.ChatID = chatID
 
-			if err = b.storage.CreateStartDate(user); err != nil {
+			if err = b.dateStorage.CreateStartDate(b.ctx, user); err != nil {
 				return err
 			}
 
@@ -63,18 +68,23 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 			break
 		}
 
-		if user.Stop != "" {
-			msg = tgbotapi.NewMessage(chatID, "Выбери действие у последнего таймера")
-			break
-		}
-
-		startTime, err := time.Parse(constant.Layout, user.Start)
+		user, err := b.dateStorage.GetDate(b.ctx, userName, chatID)
 		if err != nil {
 			return err
 		}
 
-		user.Stop = date.Format(constant.Layout)
-		if err := b.storage.UpdateStopDate(user); err != nil {
+		if user.StopDate != "" {
+			msg = tgbotapi.NewMessage(chatID, "Выбери действие у последнего таймера")
+			break
+		}
+
+		startTime, err := time.Parse(constant.Layout, user.StartDate)
+		if err != nil {
+			return err
+		}
+
+		user.StopDate = date.Format(constant.Layout)
+		if err := b.dateStorage.UpdateStopDate(b.ctx, user); err != nil {
 			return err
 		}
 
@@ -92,7 +102,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 		msg.ReplyMarkup = keyboard
 	case "sleepstat":
 		if message.Chat.IsGroup() {
-			users, err := b.storage.GetStats(message.Chat.ID)
+			users, err := b.statStorage.GetStats(b.ctx, message.Chat.ID)
 			if err != nil {
 				return err
 			}
@@ -114,7 +124,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 
 		userName := message.From.UserName
 
-		user, err := b.storage.GetStat(userName, message.Chat.ID)
+		user, err := b.statStorage.GetStat(b.ctx, userName, message.Chat.ID)
 		if err != nil {
 			return err
 		}
@@ -177,12 +187,12 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 		userName := message.From.UserName
 		messageID := message.Message.MessageID
 		chatID := message.Message.Chat.ID
-		dateUser, err := b.storage.GetDate(userName, chatID)
+		dateUser, err := b.dateStorage.GetDate(b.ctx, userName, chatID)
 		if err != nil {
 			return err
 		}
 
-		startDate, stopDate := dateUser.Start, dateUser.Stop
+		startDate, stopDate := dateUser.StartDate, dateUser.StopDate
 
 		startTime, err := time.Parse(constant.Layout, startDate)
 		if err != nil {
@@ -196,32 +206,38 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 
 		sleepTime := stopTime.Sub(startTime)
 
-		statUser, err := b.storage.GetStat(userName, chatID)
+		exists, err := b.statStorage.StatIsExists(b.ctx, userName, chatID)
 		if err != nil {
 			return err
 		}
+		if !exists {
+			stat := new(postgres.Stat)
+			stat.Name = userName
+			stat.ChatID = message.Message.Chat.ID
+			stat.Counter = 1
+			stat.AverageTimeSleep = sleepTime.Hours()
 
-		if statUser.Counter == 0 {
-			statUser.Name = userName
-			statUser.ChatID = message.Message.Chat.ID
-			statUser.Counter = 1
-			statUser.AverageTimeSleep = sleepTime.Hours()
-
-			err = b.storage.CreateStat(statUser)
+			err = b.statStorage.CreateStat(b.ctx, stat)
 			if err != nil {
 				return err
 			}
-		} else {
-			hoursNumber := statUser.AverageTimeSleep*float64(statUser.Counter) + sleepTime.Hours()
-			statUser.Counter++
-			statUser.AverageTimeSleep = hoursNumber / float64(statUser.Counter)
 
-			if err = b.storage.UpdateStat(statUser); err != nil {
+		} else {
+			stat, err := b.statStorage.GetStat(b.ctx, userName, chatID)
+			if err != nil {
+				return err
+			}
+
+			hoursNumber := stat.AverageTimeSleep*float64(stat.Counter) + sleepTime.Hours()
+			stat.Counter++
+			stat.AverageTimeSleep = hoursNumber / float64(stat.Counter)
+
+			if err = b.statStorage.UpdateStat(b.ctx, stat); err != nil {
 				return err
 			}
 		}
 
-		if err = b.storage.DeleteDate(userName, dateUser.ChatID); err != nil {
+		if err = b.dateStorage.DeleteDate(b.ctx, userName, dateUser.ChatID); err != nil {
 			return err
 		}
 
@@ -240,12 +256,12 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 	case constant.DontAdd:
 		userName := message.From.UserName
 		chatID := message.Message.Chat.ID
-		dateUser, err := b.storage.GetDate(userName, chatID)
+		dateUser, err := b.dateStorage.GetDate(b.ctx, userName, chatID)
 		if err != nil {
 			return err
 		}
 
-		err = b.storage.DeleteDate(message.From.UserName, dateUser.ChatID)
+		err = b.dateStorage.DeleteDate(b.ctx, message.From.UserName, dateUser.ChatID)
 		if err != nil {
 			return err
 		}

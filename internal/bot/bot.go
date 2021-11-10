@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"log"
 
 	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
@@ -12,16 +13,19 @@ const (
 )
 
 type Bot struct {
-	botApi                *tgbotapi.BotAPI
-	usersIDsInInteractive map[int32]string
-	storage               postgres.Storage
+	ctx         context.Context
+	botApi      *tgbotapi.BotAPI
+	statStorage postgres.StatStorage
+	dateStorage postgres.DateStorage
 }
 
-func NewBot(botApi *tgbotapi.BotAPI, usersIDsInInteractive map[int32]string, storage postgres.Storage) *Bot {
+func NewBot(ctx context.Context, botApi *tgbotapi.BotAPI, statStorage postgres.StatStorage, dateStorage postgres.DateStorage) *Bot {
 	return &Bot{
-		botApi:                botApi,
-		usersIDsInInteractive: usersIDsInInteractive,
-		storage:               storage}
+		ctx:         ctx,
+		botApi:      botApi,
+		statStorage: statStorage,
+		dateStorage: dateStorage,
+	}
 }
 
 func (b *Bot) Start() error {

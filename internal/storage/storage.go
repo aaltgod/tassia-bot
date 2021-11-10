@@ -1,85 +1,54 @@
 package storage
 
 import (
-	"database/sql"
-	"fmt"
-	"os"
+	"context"
 
 	_ "github.com/lib/pq"
+	"github.com/uptrace/bun"
 )
 
-type User struct {
-	Name             string  `json:"username"`
-	ChatID           int64   `json:"chat_id"`
-	Start            string  `json:"start_date"`
-	Stop             string  `json:"stop_date"`
-	Counter          int     `json:"counter"`
-	AverageTimeSleep float64 `json:"averagetimesleep"`
+type StatStorage interface {
+	CreateStat(ctx context.Context, user *Stat) error
+	GetStat(ctx context.Context, userName string, chatID int64) (*Stat, error)
+	StatIsExists(ctx context.Context, userName string, chatID int64) (bool, error)
+	UpdateStat(ctx context.Context, user *Stat) error
+	GetStats(ctx context.Context, chatID int64) ([]*Stat, error)
 }
 
-type Storage interface {
-	CreateStat(*User) error
-	GetStat(userName string, chatID int64) (*User, error)
-	UpdateStat(*User) error
-	GetStats(chatID int64) ([]*User, error)
-	CreateStartDate(user *User) error
-	GetDate(userName string, chatID int64) (*User, error)
-	UpdateStopDate(user *User) error
-	DeleteDate(userName string, chatID int64) error
+type DateStorage interface {
+	CreateStartDate(ctx context.Context, user *Date) error
+	GetDate(ctx context.Context, userName string, chatID int64) (*Date, error)
+	DateIsExist(ctx context.Context, userName string, chatID int64) (bool, error)
+	UpdateStopDate(ctx context.Context, user *Date) error
+	DeleteDate(ctx context.Context, userName string, chatID int64) error
 }
 
-type UserStorage struct{}
-
-func NewUserStorage() *UserStorage {
-	return &UserStorage{}
+type Storage struct {
+	db *bun.DB
 }
 
-func CreateConnection() (*sql.DB, error) {
-
-	DSN := fmt.Sprintf(
-		"postgresql://%s:%s@localhost:%s/storage?sslmode=disable",
-		os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"),
-		os.Getenv("POSTGRES_EXTERNAL_PORT"),
-	)
-
-	db, err := sql.Open("postgres", DSN)
-	if err != nil {
-		return nil, err
+func NewStorage(db *bun.DB) *Storage {
+	return &Storage{
+		db: db,
 	}
-
-	return db, nil
 }
 
-func PrepareStorage(db *sql.DB) error {
+func PrepareStorage(ctx context.Context, db *bun.DB) error {
 
-	qs := []string{
-		`DROP TABLE IF EXISTS stats;`,
-		`CREATE TABLE stats(username VARCHAR(20), chat_id INTEGER, counter INTEGER, averagetimesleep NUMERIC(30, 2));`,
-		`DROP TABLE IF EXISTS dates;`,
-		`CREATE TABLE dates(username VARCHAR(20), chat_id INTEGER, start_date VARCHAR(100), stop_date VARCHAR(100));`,
-	}
-	for _, q := range qs {
-		_, err := db.Exec(q)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (u *UserStorage) CreateStat(user *User) error {
-
-	db, err := CreateConnection()
+	_, err := db.NewCreateTable().
+		Model((*Stat)(nil)).
+		Table("stats").
+		IfNotExists().
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
-	defer db.Close()
 
-	_, err = db.Exec(
-		"INSERT INTO stats(username, chat_id, counter, averagetimesleep) VALUES($1, $2, $3, $4)",
-		user.Name, user.ChatID, user.Counter, user.AverageTimeSleep,
-	)
+	_, err = db.NewCreateTable().
+		Model((*Date)(nil)).
+		Table("dates").
+		IfNotExists().
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -87,39 +56,11 @@ func (u *UserStorage) CreateStat(user *User) error {
 	return nil
 }
 
-func (u *UserStorage) GetStat(userName string, chatID int64) (*User, error) {
+func (u *Storage) CreateStat(ctx context.Context, user *Stat) error {
 
-	db, err := CreateConnection()
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	var user User
-	user.Name = userName
-	user.ChatID = chatID
-
-	row := db.QueryRow(
-		"SELECT counter, averagetimesleep FROM stats WHERE username=$1 AND chat_id=$2",
-		userName, chatID,
-	)
-	row.Scan(&user.Counter, &user.AverageTimeSleep)
-
-	return &user, nil
-}
-
-func (u *UserStorage) UpdateStat(user *User) error {
-
-	db, err := CreateConnection()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	_, err = db.Exec(
-		"UPDATE stats SET counter=$1, averagetimesleep=$2 WHERE username=$3 AND chat_id=$4",
-		user.Counter, user.AverageTimeSleep, user.Name, user.ChatID,
-	)
+	_, err := u.db.NewInsert().
+		Model(user).
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -127,51 +68,39 @@ func (u *UserStorage) UpdateStat(user *User) error {
 	return nil
 }
 
-func (u *UserStorage) GetStats(chatID int64) ([]*User, error) {
+func (u *Storage) GetStat(ctx context.Context, userName string, chatID int64) (*Stat, error) {
 
-	db, err := CreateConnection()
+	stat := new(Stat)
+	err := u.db.NewSelect().
+		Model(stat).
+		Where("username = ? AND chat_id = ?", userName, chatID).
+		Scan(ctx)
 	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	var users []*User
-
-	rows, err := db.Query(
-		"SELECT username, counter, averagetimesleep FROM stats WHERE chat_id=$1",
-		chatID,
-	)
-	if err != nil {
-		return nil, err
+		return &Stat{}, err
 	}
 
-	for rows.Next() {
-		user := User{}
-
-		err := rows.Scan(&user.Name, &user.Counter, &user.AverageTimeSleep)
-		if err != nil {
-			return nil, err
-		}
-
-		users = append(users, &user)
-	}
-	defer rows.Close()
-
-	return users, nil
+	return stat, nil
 }
 
-func (u *UserStorage) CreateStartDate(user *User) error {
+func (u *Storage) StatIsExists(ctx context.Context, userName string, chatID int64) (bool, error) {
 
-	db, err := CreateConnection()
+	exists, err := u.db.NewSelect().
+		Model((*Stat)(nil)).
+		Where("username = ? AND chat_id = ?", userName, chatID).
+		Exists(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
-	defer db.Close()
 
-	_, err = db.Exec(
-		"INSERT INTO dates(username, chat_id, start_date) VALUES($1, $2, $3)",
-		user.Name, user.ChatID, user.Start,
-	)
+	return exists, nil
+}
+
+func (u *Storage) UpdateStat(ctx context.Context, user *Stat) error {
+
+	_, err := u.db.NewUpdate().
+		Model(user).
+		Where("username = ? AND chat_id = ?", user.Name, user.ChatID).
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -179,39 +108,24 @@ func (u *UserStorage) CreateStartDate(user *User) error {
 	return nil
 }
 
-func (u *UserStorage) GetDate(userName string, chatID int64) (*User, error) {
+func (u *Storage) GetStats(ctx context.Context, chatID int64) ([]*Stat, error) {
 
-	db, err := CreateConnection()
+	var stats []*Stat
+	err := u.db.NewSelect().
+		Model(&stats).
+		Scan(ctx)
 	if err != nil {
-		return nil, err
+		return []*Stat{}, err
 	}
-	defer db.Close()
 
-	var user User
-	user.Name = userName
-	user.ChatID = chatID
-
-	row := db.QueryRow(
-		"SELECT start_date, stop_date FROM dates WHERE username=$1 AND chat_id=$2",
-		userName, chatID,
-	)
-	row.Scan(&user.Start, &user.Stop)
-
-	return &user, nil
+	return stats, nil
 }
 
-func (u *UserStorage) UpdateStopDate(user *User) error {
+func (u *Storage) CreateStartDate(ctx context.Context, date *Date) error {
 
-	db, err := CreateConnection()
-	if err != nil {
-		return nil
-	}
-	defer db.Close()
-
-	_, err = db.Exec(
-		"UPDATE dates SET stop_date=$1 WHERE username=$2 AND chat_id=$3",
-		user.Stop, user.Name, user.ChatID,
-	)
+	_, err := u.db.NewInsert().
+		Model(date).
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -219,18 +133,52 @@ func (u *UserStorage) UpdateStopDate(user *User) error {
 	return nil
 }
 
-func (u *UserStorage) DeleteDate(userName string, chatID int64) error {
+func (u *Storage) DateIsExist(ctx context.Context, userName string, chatID int64) (bool, error) {
 
-	db, err := CreateConnection()
+	exists, err := u.db.NewSelect().
+		Model((*Date)(nil)).
+		Where("username = ? AND chat_id = ?", userName, chatID).
+		Exists(ctx)
 	if err != nil {
-		return nil
+		return false, err
 	}
-	defer db.Close()
 
-	_, err = db.Exec(
-		"DELETE FROM dates WHERE username=$1 AND chat_id=$2",
-		userName, chatID,
-	)
+	return exists, nil
+}
+
+func (u *Storage) GetDate(ctx context.Context, userName string, chatID int64) (*Date, error) {
+
+	date := new(Date)
+	_, err := u.db.NewSelect().
+		Model(date).
+		Where("username = ? AND chat_id = ?", userName, chatID).
+		ScanAndCount(ctx)
+	if err != nil {
+		return &Date{}, err
+	}
+
+	return date, nil
+}
+
+func (u *Storage) UpdateStopDate(ctx context.Context, user *Date) error {
+
+	_, err := u.db.NewUpdate().
+		Model(user).
+		Where("username = ? AND chat_id = ?", user.Name, user.ChatID).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *Storage) DeleteDate(ctx context.Context, userName string, chatID int64) error {
+
+	_, err := u.db.NewDelete().
+		Model((*Date)(nil)).
+		Where("username = ? AND chat_id = ?", userName, chatID).
+		Exec(ctx)
 	if err != nil {
 		return err
 	}
