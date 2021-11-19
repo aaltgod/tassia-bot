@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 
 	constant "github.com/alyaskastorm/tassia-bot/internal/constants"
 
@@ -144,7 +145,7 @@ func (m *MessageConstructor) CreateFileKeyboarRow(path string, pageNumber int) (
 	}
 
 	if pageNumber <= 4 {
-		for i := 1; i < pagesAmount-1; i++ {
+		for i := 2; i < pagesAmount-1; i++ {
 			pagesNumbers = append(pagesNumbers, i)
 		}
 		pagesNumbers = append(pagesNumbers, pagesAmount)
@@ -190,7 +191,14 @@ func (m *MessageConstructor) CreateMessageText(path string) (string, error) {
 		return "", err
 	}
 
-	text := fmt.Sprintf("Количество файлов в данной папке: %d\n\n", len(files))
+	dirNames := strings.Split(path, "/")
+	dirName := dirNames[len(dirNames)-1]
+
+	text := fmt.Sprintf(
+		"Количество файлов в [%s]: %d\n\n",
+		dirName,
+		len(files),
+	)
 
 	for _, file := range files {
 		text += file.Name() + "\n\n"
