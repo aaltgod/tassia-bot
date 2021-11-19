@@ -17,14 +17,16 @@ type Bot struct {
 	botApi      *tgbotapi.BotAPI
 	statStorage postgres.StatStorage
 	dateStorage postgres.DateStorage
+	dirStorage  postgres.DirStorage
 }
 
-func NewBot(ctx context.Context, botApi *tgbotapi.BotAPI, statStorage postgres.StatStorage, dateStorage postgres.DateStorage) *Bot {
+func NewBot(ctx context.Context, botApi *tgbotapi.BotAPI, statStorage postgres.StatStorage, dateStorage postgres.DateStorage, dirStorage postgres.DirStorage) *Bot {
 	return &Bot{
 		ctx:         ctx,
 		botApi:      botApi,
 		statStorage: statStorage,
 		dateStorage: dateStorage,
+		dirStorage:  dirStorage,
 	}
 }
 

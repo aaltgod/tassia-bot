@@ -26,3 +26,9 @@ type Date struct {
 	CreatedAt time.Time `bun:",nullzero,notnull,default:current_timestamp"`
 	UpdateAt  bun.NullTime
 }
+
+type Dir struct {
+	UUID       string `bun:"default:gen_random_uuid()"`
+	Path       string `bun:"path"`
+	ParentPath string `bun:"parent_path"`
+}

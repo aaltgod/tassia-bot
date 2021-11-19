@@ -32,8 +32,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// time.Sleep(time.Second * 3)
-
 	dsn := fmt.Sprintf(
 		"postgresql://%s:%s@localhost:%s/storage?sslmode=disable",
 		os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"),
@@ -46,26 +44,28 @@ func main() {
 	}
 
 	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-
 	db.SetMaxOpenConns(maxOpenConns)
 	db.SetMaxIdleConns(maxOpenConns)
 
-	if err = postgres.PrepareStorage(ctx, db); err != nil {
+	storage := postgres.NewStorage(db)
+
+	if err = storage.PrepareTables(ctx); err != nil {
 		log.Fatalln(err)
 	}
-
-	storage := postgres.NewStorage(db)
+	if err := storage.PrepareArchiveTable(ctx); err != nil {
+		log.Fatal(err)
+	}
 
 	botApi, err := tgbotapi.NewBotAPI(os.Getenv("API_TOKEN"))
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	botApi.Debug = true
+	botApi.Debug = false
 
 	log.Println("Authorized username: ", botApi.Self.UserName)
 
-	bot := b.NewBot(ctx, botApi, storage, storage)
+	bot := b.NewBot(ctx, botApi, storage, storage, storage)
 
 	if err = bot.Start(); err != nil {
 		log.Fatalln(err)

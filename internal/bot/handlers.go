@@ -6,10 +6,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"time"
 
-	botkeyboard "github.com/alyaskastorm/tassia-bot/pkg/bot-keyboard"
-	constant "github.com/alyaskastorm/tassia-bot/pkg/constants"
+	constant "github.com/alyaskastorm/tassia-bot/internal/constants"
+	msgconstructor "github.com/alyaskastorm/tassia-bot/internal/message-constructor"
 	temperature "github.com/alyaskastorm/tassia-bot/pkg/temperature"
 
 	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
@@ -57,7 +59,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 		if !exists {
 			user := new(postgres.Date)
 			user.Name = userName
-			user.StartDate = date.Format(constant.Layout)
+			user.StartDate = date.Format(constant.LAYOUT)
 			user.ChatID = chatID
 
 			if err = b.dateStorage.CreateStartDate(b.ctx, user); err != nil {
@@ -78,12 +80,12 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 			break
 		}
 
-		startTime, err := time.Parse(constant.Layout, user.StartDate)
+		startTime, err := time.Parse(constant.LAYOUT, user.StartDate)
 		if err != nil {
 			return err
 		}
 
-		user.StopDate = date.Format(constant.Layout)
+		user.StopDate = date.Format(constant.LAYOUT)
 		if err := b.dateStorage.UpdateStopDate(b.ctx, user); err != nil {
 			return err
 		}
@@ -95,8 +97,8 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 			fmt.Sprintf("Ты поспонькал %s", sleepTime.String()),
 		)
 		buttons := tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Add to stat", constant.AddToStat),
-			tgbotapi.NewInlineKeyboardButtonData("Don't add", constant.DontAdd),
+			tgbotapi.NewInlineKeyboardButtonData("Add to stat", constant.ADDTOSTAT),
+			tgbotapi.NewInlineKeyboardButtonData("Don't add", constant.DONTADD),
 		)
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(buttons)
 		msg.ReplyMarkup = keyboard
@@ -183,7 +185,7 @@ func (b *Bot) handleError(message *tgbotapi.Message) {
 func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 
 	switch message.Data {
-	case constant.AddToStat:
+	case constant.ADDTOSTAT:
 		userName := message.From.UserName
 		messageID := message.Message.MessageID
 		chatID := message.Message.Chat.ID
@@ -194,12 +196,12 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 
 		startDate, stopDate := dateUser.StartDate, dateUser.StopDate
 
-		startTime, err := time.Parse(constant.Layout, startDate)
+		startTime, err := time.Parse(constant.LAYOUT, startDate)
 		if err != nil {
 			return err
 		}
 
-		stopTime, err := time.Parse(constant.Layout, stopDate)
+		stopTime, err := time.Parse(constant.LAYOUT, stopDate)
 		if err != nil {
 			return err
 		}
@@ -253,7 +255,7 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 		msg := tgbotapi.NewMessage(chatID, message.Message.Text)
 		msg.ReplyToMessageID = message.Message.ReplyToMessage.MessageID
 		b.botApi.Send(msg)
-	case constant.DontAdd:
+	case constant.DONTADD:
 		userName := message.From.UserName
 		chatID := message.Message.Chat.ID
 		dateUser, err := b.dateStorage.GetDate(b.ctx, userName, chatID)
@@ -277,37 +279,48 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 	default:
 		switch message.Data[0:3] {
 		case constant.ENTRYPOINT:
+			log.Println("ENTRYPOINT")
+
 			path := message.Data[4:]
-			log.Println(path)
-
-			fileKeyboardRow, err := botkeyboard.CreateFileKeyboarRow(path, 1)
+			msgConstructor := msgconstructor.NewMessageConstructor(b.dirStorage)
+			fileKeyboardRow, err := msgConstructor.CreateFileKeyboarRow(path, 1)
 			if err != nil {
 				return err
 			}
 
-			dirKeyboardRow, err := botkeyboard.CreateDIRKeyboardRow(path, "")
+			dirIdx := &msgconstructor.DirIdx{
+				First:  0,
+				Second: 1,
+				Third:  2,
+			}
+
+			dirKeyboardRow, err := msgConstructor.CreateDIRKeyboardRow(path, dirIdx)
 			if err != nil {
 				return err
 			}
 
-			text := fmt.Sprintf("Количество файлов в данной папке: %d\n\n", len(fileKeyboardRow))
+			text, err := msgConstructor.CreateMessageText(path)
+			if err != nil {
+				return err
+			}
 
-			keyboardRow := tgbotapi.NewInlineKeyboardRow()
-			keyboardRow = append(
-				keyboardRow,
-				tgbotapi.NewInlineKeyboardButtonData(
-					"◀️",
-					fmt.Sprintf("%s archive", constant.DIR),
-				))
-			keyboardRow = append(
-				keyboardRow,
-				tgbotapi.NewInlineKeyboardButtonData(
-					"▶️",
-					fmt.Sprintf("%s archive", constant.DIR),
-				),
-			)
+			exists, err := b.dirStorage.DirIsExistsByPath(b.ctx, path)
+			if err != nil {
+				return err
+			}
+			if exists {
+				_, err := b.dirStorage.GetDirByPath(b.ctx, path)
+				if err != nil {
+					return err
+				}
+			}
 
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(fileKeyboardRow, dirKeyboardRow, keyboardRow)
+			dirNavigationKeyboardRow, err := msgConstructor.CreateDIRNavigationButtonsRow(path, path, dirIdx)
+			if err != nil {
+				return err
+			}
+
+			keyboard := tgbotapi.NewInlineKeyboardMarkup(fileKeyboardRow, dirKeyboardRow, dirNavigationKeyboardRow)
 
 			editMessageReplyMarkup := tgbotapi.NewEditMessageReplyMarkup(
 				message.Message.Chat.ID,
@@ -323,37 +336,130 @@ func (b *Bot) handlerCallbackQuery(message *tgbotapi.CallbackQuery) error {
 			b.botApi.Send(editMessageText)
 			b.botApi.Send(editMessageReplyMarkup)
 		case constant.DIR:
-			path := message.Data[4:]
-
-			dirKeyboardRow, err := botkeyboard.CreateDIRKeyboardRow(path, "")
+			log.Println("DIR")
+			uuid := message.Data[4:]
+			log.Println(message.Data, uuid)
+			exists, err := b.dirStorage.DirIsExistsByUUID(b.ctx, uuid)
 			if err != nil {
 				return err
 			}
+			if exists {
+				dir, err := b.dirStorage.GetDirByUUID(b.ctx, uuid)
+				if err != nil {
+					return err
+				}
 
-			keyboardRow := tgbotapi.NewInlineKeyboardRow()
-			keyboardRow = append(
-				keyboardRow,
-				tgbotapi.NewInlineKeyboardButtonData(
-					"◀️",
-					fmt.Sprintf("%s archive", constant.DIR),
-				))
-			keyboardRow = append(
-				keyboardRow,
-				tgbotapi.NewInlineKeyboardButtonData(
-					"▶️",
-					fmt.Sprintf("%s archive", constant.DIR),
-				),
-			)
+				log.Println(dir.Path, dir.ParentPath)
+				msgConstructor := msgconstructor.NewMessageConstructor(b.dirStorage)
+				fileKeyboardRow, err := msgConstructor.CreateFileKeyboarRow(dir.Path, 1)
+				if err != nil {
+					return err
+				}
 
-			keyboard := tgbotapi.NewInlineKeyboardMarkup(dirKeyboardRow, keyboardRow)
+				dirIdx := &msgconstructor.DirIdx{
+					First:  0,
+					Second: 1,
+					Third:  2,
+				}
 
-			editMessageReplyMarkup := tgbotapi.NewEditMessageReplyMarkup(
-				message.Message.Chat.ID,
-				message.Message.MessageID,
-				keyboard,
-			)
+				dirKeyboardRow, err := msgConstructor.CreateDIRKeyboardRow(dir.Path, dirIdx)
+				if err != nil {
+					return err
+				}
 
-			b.botApi.Send(editMessageReplyMarkup)
+				text, err := msgConstructor.CreateMessageText(dir.Path)
+				if err != nil {
+					return err
+				}
+
+				dirNavigationKeyboardRow, err := msgConstructor.CreateDIRNavigationButtonsRow(dir.Path, dir.ParentPath, dirIdx)
+				if err != nil {
+					return err
+				}
+
+				log.Println(fileKeyboardRow, dirKeyboardRow, dirNavigationKeyboardRow)
+
+				keyboard := tgbotapi.NewInlineKeyboardMarkup(fileKeyboardRow, dirKeyboardRow, dirNavigationKeyboardRow)
+
+				editMessageReplyMarkup := tgbotapi.NewEditMessageReplyMarkup(
+					message.Message.Chat.ID,
+					message.Message.MessageID,
+					keyboard,
+				)
+				editMessageText := tgbotapi.NewEditMessageText(
+					message.Message.Chat.ID,
+					message.Message.MessageID,
+					text,
+				)
+
+				b.botApi.Send(editMessageText)
+				b.botApi.Send(editMessageReplyMarkup)
+			}
+
+		case constant.FLIPDIRS:
+			log.Println("FLIPDIRS")
+			uuid := message.Data[4 : len(message.Data)-6]
+			log.Println(message.Data, uuid)
+
+			exists, err := b.dirStorage.DirIsExistsByUUID(b.ctx, uuid)
+			if err != nil {
+				return err
+			}
+			if exists {
+				idxs := strings.Split(message.Data[len(message.Data)-5:], ":")
+				log.Println(idxs)
+
+				dir, err := b.dirStorage.GetDirByUUID(b.ctx, uuid)
+				if err != nil {
+					return err
+				}
+
+				msgConstructor := msgconstructor.NewMessageConstructor(b.dirStorage)
+				fileKeyboardRow, err := msgConstructor.CreateFileKeyboarRow(dir.Path, 1)
+				if err != nil {
+					return err
+				}
+
+				firstIdx, err := strconv.Atoi(idxs[0])
+				if err != nil {
+					return err
+				}
+				secondIdx, err := strconv.Atoi(idxs[1])
+				if err != nil {
+					return err
+				}
+				thirdIdx, err := strconv.Atoi(idxs[2])
+				if err != nil {
+					return err
+				}
+
+				dirIdx := &msgconstructor.DirIdx{
+					First:  firstIdx,
+					Second: secondIdx,
+					Third:  thirdIdx,
+				}
+
+				dirKeyboardRow, err := msgConstructor.CreateDIRKeyboardRow(dir.Path, dirIdx)
+				if err != nil {
+					return err
+				}
+
+				dirNavigationKeyboardRow, err := msgConstructor.CreateDIRNavigationButtonsRow(dir.Path, dir.ParentPath, dirIdx)
+				if err != nil {
+					return err
+				}
+
+				keyboard := tgbotapi.NewInlineKeyboardMarkup(fileKeyboardRow, dirKeyboardRow, dirNavigationKeyboardRow)
+
+				editMessageReplyMarkup := tgbotapi.NewEditMessageReplyMarkup(
+					message.Message.Chat.ID,
+					message.Message.MessageID,
+					keyboard,
+				)
+
+				b.botApi.Send(editMessageReplyMarkup)
+			}
+
 		case constant.FILE:
 
 		}
