@@ -12,6 +12,7 @@ import (
 
 	constant "github.com/alyaskastorm/tassia-bot/internal/constants"
 	msgconstructor "github.com/alyaskastorm/tassia-bot/internal/message-constructor"
+	sunsetsunrise "github.com/alyaskastorm/tassia-bot/pkg/sunset-sunrise"
 	temperature "github.com/alyaskastorm/tassia-bot/pkg/temperature"
 
 	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
@@ -45,6 +46,13 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 		}
 
 		msg = tgbotapi.NewMessage(message.Chat.ID, temp)
+	case "i":
+		sunIntervals, err := sunsetsunrise.GetSunIntervals()
+		if err != nil {
+			return err
+		}
+
+		msg = tgbotapi.NewMessage(message.Chat.ID, sunIntervals)
 	case "sleep":
 		userName := message.From.UserName
 		chatID := message.Chat.ID
