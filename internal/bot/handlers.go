@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	constant "github.com/alyaskastorm/tassia-bot/internal/constants"
-	msgconstructor "github.com/alyaskastorm/tassia-bot/internal/message-constructor"
-	sunsetsunrise "github.com/alyaskastorm/tassia-bot/pkg/sunset-sunrise"
-	temperature "github.com/alyaskastorm/tassia-bot/pkg/temperature"
+	constant "github.com/aaltgod/tassia-bot/internal/constants"
+	msgconstructor "github.com/aaltgod/tassia-bot/internal/message-constructor"
+	sunsetsunrise "github.com/aaltgod/tassia-bot/pkg/sunset-sunrise"
+	temperature "github.com/aaltgod/tassia-bot/pkg/temperature"
 
-	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
+	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )

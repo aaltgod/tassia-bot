@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
+	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 

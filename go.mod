@@ -1,4 +1,4 @@
-module github.com/alyaskastorm/tassia-bot
+module github.com/aaltgod/tassia-bot
 
 go 1.17
 

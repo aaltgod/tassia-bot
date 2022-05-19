@@ -9,9 +9,9 @@ import (
 	"os"
 	"strings"
 
-	constant "github.com/alyaskastorm/tassia-bot/internal/constants"
+	constant "github.com/aaltgod/tassia-bot/internal/constants"
 
-	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
+	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )

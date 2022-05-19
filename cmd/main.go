@@ -8,8 +8,8 @@ import (
 	"os"
 	"runtime"
 
-	b "github.com/alyaskastorm/tassia-bot/internal/bot"
-	postgres "github.com/alyaskastorm/tassia-bot/internal/storage"
+	b "github.com/aaltgod/tassia-bot/internal/bot"
+	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
