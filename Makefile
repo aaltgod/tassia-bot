@@ -1,9 +1,9 @@
-b=tassia
+APP_NAME=tassia
 
 run: build
 	@echo "====== BUILD and RUN app ======"
-	go mod download && go build -o .bin/$(b) cmd/main.go
-	.bin/$(b)
+	go mod download && go build -o .bin/$(APP_NAME) cmd/main.go
+	.bin/$(APP_NAME)
 
 build: clean
 	@echo "====== RUN postgres ======"
