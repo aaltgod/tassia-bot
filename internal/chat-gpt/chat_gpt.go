@@ -5,20 +5,20 @@ import (
 	"errors"
 	"strings"
 
-    chatgpt "github.com/sashabaranov/go-openai"
+	chatgpt "github.com/sashabaranov/go-openai"
 )
 
 type Client struct {
-	token string
-    VerifiedUserIDs []int
+	token           string
+	VerifiedUserIDs []int
 
 	chatGPT *chatgpt.Client
 }
 
 func New(token string, verifiedUserIDs []int) *Client {
 	client := &Client{
-		token: token,
-        VerifiedUserIDs: verifiedUserIDs,
+		token:           token,
+		VerifiedUserIDs: verifiedUserIDs,
 	}
 
 	client.chatGPT = chatgpt.NewClient(client.token)
