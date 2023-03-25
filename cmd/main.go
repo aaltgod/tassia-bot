@@ -69,10 +69,11 @@ func main() {
 
 	verifiedUserIDs := func() []int {
 		var result []int
-        for _, v := range strings.Split(os.Getenv("VERIFIED_USER_IDS_FOR_CHAT_GPT"), ",") {
+
+		for _, v := range strings.Split(os.Getenv("VERIFIED_USER_IDS_FOR_CHAT_GPT"), ",") {
 			id, err := strconv.Atoi(v)
 			if err != nil {
-                log.Fatal("couldn't pasrse VERIFIED_USER_IDS_FOR_CHAT_GPT ", err.Error())
+				log.Fatal("couldn't pasrse VERIFIED_USER_IDS_FOR_CHAT_GPT ", err.Error())
 			}
 
 			result = append(result, id)
@@ -81,7 +82,7 @@ func main() {
 		return result
 	}()
 
-    log.Println("VERIFIED_USER_IDS_FOR_CHAT_GPT ", verifiedUserIDs)
+	log.Println("VERIFIED_USER_IDS_FOR_CHAT_GPT ", verifiedUserIDs)
 
 	bot := b.NewBot(
 		ctx,
