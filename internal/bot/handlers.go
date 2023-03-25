@@ -21,7 +21,12 @@ import (
 )
 
 func (b *Bot) handleCommand(message *tgbotapi.Message) error {
-	log.Printf("[%s]: %s\n", message.From.UserName, message.Text)
+	log.Printf(
+		"[%s] with id [%d]: %s\n",
+		message.From.UserName,
+		message.From.ID,
+		message.Text,
+	)
 
 	var (
 		msg tgbotapi.MessageConfig
