@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	chatGPT "github.com/aaltgod/tassia-bot/internal/chat-gpt"
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
@@ -13,16 +14,26 @@ const (
 )
 
 type Bot struct {
-	ctx         context.Context
+	ctx context.Context
+
+	chatGPT     *chatGPT.Client
 	botApi      *tgbotapi.BotAPI
 	statStorage postgres.StatStorage
 	dateStorage postgres.DateStorage
 	dirStorage  postgres.DirStorage
 }
 
-func NewBot(ctx context.Context, botApi *tgbotapi.BotAPI, statStorage postgres.StatStorage, dateStorage postgres.DateStorage, dirStorage postgres.DirStorage) *Bot {
+func NewBot(
+	ctx context.Context,
+	chatGPT *chatGPT.Client,
+	botApi *tgbotapi.BotAPI,
+	statStorage postgres.StatStorage,
+	dateStorage postgres.DateStorage,
+	dirStorage postgres.DirStorage,
+) *Bot {
 	return &Bot{
 		ctx:         ctx,
+		chatGPT:     chatGPT,
 		botApi:      botApi,
 		statStorage: statStorage,
 		dateStorage: dateStorage,
@@ -31,7 +42,6 @@ func NewBot(ctx context.Context, botApi *tgbotapi.BotAPI, statStorage postgres.S
 }
 
 func (b *Bot) Start() error {
-
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 

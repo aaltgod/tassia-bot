@@ -7,16 +7,18 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strconv"
+	"strings"
 
 	b "github.com/aaltgod/tassia-bot/internal/bot"
+	chatGPT "github.com/aaltgod/tassia-bot/internal/chat-gpt"
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/joho/godotenv"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -65,7 +67,30 @@ func main() {
 
 	log.Println("Authorized username: ", botApi.Self.UserName)
 
-	bot := b.NewBot(ctx, botApi, storage, storage, storage)
+	verifiedUserIDs := func() []int {
+		var result []int
+        for _, v := range strings.Split(os.Getenv("VERIFIED_USER_IDS_FOR_CHAT_GPT"), ",") {
+			id, err := strconv.Atoi(v)
+			if err != nil {
+                log.Fatal("couldn't pasrse VERIFIED_USER_IDS_FOR_CHAT_GPT ", err.Error())
+			}
+
+			result = append(result, id)
+		}
+
+		return result
+	}()
+
+    log.Println("VERIFIED_USER_IDS_FOR_CHAT_GPT ", verifiedUserIDs)
+
+	bot := b.NewBot(
+		ctx,
+		chatGPT.New(os.Getenv("CHAT_GPT_TOKEN"), verifiedUserIDs),
+		botApi,
+		storage,
+		storage,
+		storage,
+	)
 
 	if err = bot.Start(); err != nil {
 		log.Fatalln(err)

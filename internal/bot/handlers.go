@@ -13,7 +13,7 @@ import (
 	constant "github.com/aaltgod/tassia-bot/internal/constants"
 	msgconstructor "github.com/aaltgod/tassia-bot/internal/message-constructor"
 	sunsetsunrise "github.com/aaltgod/tassia-bot/pkg/sunset-sunrise"
-	temperature "github.com/aaltgod/tassia-bot/pkg/temperature"
+	"github.com/aaltgod/tassia-bot/pkg/temperature"
 
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 
@@ -28,6 +28,39 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 	)
 
 	switch message.Command() {
+	case "chat":
+		var found bool
+
+		for _, id := range b.chatGPT.VerifiedUserIDs {
+			if id == message.From.ID {
+				found = true
+
+				break
+			}
+		}
+
+		var result string
+
+		if found {
+			userMessage := message.Text
+
+			log.Printf("GOT user [%s] message: %s", message.From.UserName, userMessage)
+
+			response, err := b.chatGPT.SendMessage(userMessage)
+			if err != nil {
+				log.Println(err)
+
+				result = "InternalError"
+			} else {
+				result = response
+			}
+
+			log.Printf("GOT user [%s] result: %s", message.From.UserName, result)
+		} else {
+			result = "No access"
+		}
+
+		msg = tgbotapi.NewMessage(message.Chat.ID, result)
 	case "df":
 		p := exec.Command("df", "-h")
 
