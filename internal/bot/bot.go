@@ -16,8 +16,10 @@ const (
 )
 
 type Bot struct {
-	ctx    context.Context
-	ticker *time.Ticker
+	ctx context.Context
+
+	ticker             *time.Ticker
+	tickerTimeDuration time.Duration
 
 	chatGPT     *chatGPT.Client
 	botApi      *tgbotapi.BotAPI
@@ -28,7 +30,7 @@ type Bot struct {
 
 func NewBot(
 	ctx context.Context,
-	ticker *time.Ticker,
+	tickerTimeDuration time.Duration,
 	chatGPT *chatGPT.Client,
 	botApi *tgbotapi.BotAPI,
 	statStorage postgres.StatStorage,
@@ -36,13 +38,14 @@ func NewBot(
 	dirStorage postgres.DirStorage,
 ) *Bot {
 	return &Bot{
-		ctx:         ctx,
-		ticker:      ticker,
-		chatGPT:     chatGPT,
-		botApi:      botApi,
-		statStorage: statStorage,
-		dateStorage: dateStorage,
-		dirStorage:  dirStorage,
+		ctx:                ctx,
+		ticker:             time.NewTicker(tickerTimeDuration),
+		tickerTimeDuration: tickerTimeDuration,
+		chatGPT:            chatGPT,
+		botApi:             botApi,
+		statStorage:        statStorage,
+		dateStorage:        dateStorage,
+		dirStorage:         dirStorage,
 	}
 }
 

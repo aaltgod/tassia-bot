@@ -60,8 +60,9 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 				result = response
 			}
 
-			log.Printf("GOT user [%s] result: %s", message.From.UserName, result)
+			b.ticker.Reset(b.tickerTimeDuration)
 
+			log.Printf("GOT user [%s] result: %s", message.From.UserName, result)
 		} else {
 			result = "No access"
 		}

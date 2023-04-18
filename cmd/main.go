@@ -87,7 +87,7 @@ func main() {
 
 	bot := b.NewBot(
 		ctx,
-		time.NewTicker(5*time.Second),
+		5*time.Second,
 		chatGPT.New(os.Getenv("CHAT_GPT_TOKEN"), verifiedUserIDs),
 		botApi,
 		storage,
