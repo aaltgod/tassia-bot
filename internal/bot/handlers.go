@@ -12,11 +12,9 @@ import (
 
 	constant "github.com/aaltgod/tassia-bot/internal/constants"
 	msgconstructor "github.com/aaltgod/tassia-bot/internal/message-constructor"
+	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 	sunsetsunrise "github.com/aaltgod/tassia-bot/pkg/sunset-sunrise"
 	"github.com/aaltgod/tassia-bot/pkg/temperature"
-
-	postgres "github.com/aaltgod/tassia-bot/internal/storage"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -51,6 +49,8 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 
 			log.Printf("GOT user [%s] message: %s", message.From.UserName, userMessage)
 
+			<-b.ticker.C
+
 			response, err := b.chatGPT.SendMessage(userMessage)
 			if err != nil {
 				log.Println(err)
@@ -61,6 +61,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 			}
 
 			log.Printf("GOT user [%s] result: %s", message.From.UserName, result)
+
 		} else {
 			result = "No access"
 		}

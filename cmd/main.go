@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	b "github.com/aaltgod/tassia-bot/internal/bot"
 	chatGPT "github.com/aaltgod/tassia-bot/internal/chat-gpt"
@@ -86,6 +87,7 @@ func main() {
 
 	bot := b.NewBot(
 		ctx,
+		time.NewTicker(5*time.Second),
 		chatGPT.New(os.Getenv("CHAT_GPT_TOKEN"), verifiedUserIDs),
 		botApi,
 		storage,

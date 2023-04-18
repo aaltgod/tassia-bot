@@ -10,9 +10,7 @@ import (
 	"strings"
 
 	constant "github.com/aaltgod/tassia-bot/internal/constants"
-
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 

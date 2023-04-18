@@ -3,6 +3,8 @@ package bot
 import (
 	"context"
 	"log"
+	"sync"
+	"time"
 
 	chatGPT "github.com/aaltgod/tassia-bot/internal/chat-gpt"
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
@@ -14,7 +16,8 @@ const (
 )
 
 type Bot struct {
-	ctx context.Context
+	ctx    context.Context
+	ticker *time.Ticker
 
 	chatGPT     *chatGPT.Client
 	botApi      *tgbotapi.BotAPI
@@ -25,6 +28,7 @@ type Bot struct {
 
 func NewBot(
 	ctx context.Context,
+	ticker *time.Ticker,
 	chatGPT *chatGPT.Client,
 	botApi *tgbotapi.BotAPI,
 	statStorage postgres.StatStorage,
@@ -33,6 +37,7 @@ func NewBot(
 ) *Bot {
 	return &Bot{
 		ctx:         ctx,
+		ticker:      ticker,
 		chatGPT:     chatGPT,
 		botApi:      botApi,
 		statStorage: statStorage,
@@ -50,27 +55,54 @@ func (b *Bot) Start() error {
 		return err
 	}
 
+	var (
+		wg        = &sync.WaitGroup{}
+		semaphore = make(chan struct{}, 6)
+	)
+
 	for update := range updates {
 		if update.Message == nil && update.CallbackQuery == nil {
 			continue
 		}
 
 		if update.CallbackQuery != nil {
-			if err := b.handlerCallbackQuery(update.CallbackQuery); err != nil {
-				log.Println(err)
-				b.handleError(update.Message)
-			}
+			semaphore <- struct{}{}
+
+			wg.Add(1)
+
+			go func() {
+				if err := b.handlerCallbackQuery(update.CallbackQuery); err != nil {
+					log.Println(err)
+					b.handleError(update.Message)
+				}
+
+				wg.Done()
+
+				<-semaphore
+			}()
 
 			continue
 		}
 
 		if update.Message.IsCommand() {
-			if err := b.handleCommand(update.Message); err != nil {
-				log.Println(err)
-				b.handleError(update.Message)
-			}
+			semaphore <- struct{}{}
+
+			wg.Add(1)
+
+			go func() {
+				if err := b.handleCommand(update.Message); err != nil {
+					log.Println(err)
+					b.handleError(update.Message)
+				}
+
+				wg.Done()
+
+				<-semaphore
+			}()
 		}
 	}
+
+	wg.Wait()
 
 	return nil
 }
