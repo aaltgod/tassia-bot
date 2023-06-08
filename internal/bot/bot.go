@@ -73,7 +73,7 @@ func (b *Bot) Start() error {
 
 			wg.Add(1)
 
-			go func() {
+			go func(update tgbotapi.Update) {
 				if err := b.handlerCallbackQuery(update.CallbackQuery); err != nil {
 					log.Println(err)
 					b.handleError(update.Message)
@@ -82,7 +82,7 @@ func (b *Bot) Start() error {
 				wg.Done()
 
 				<-semaphore
-			}()
+			}(update)
 
 			continue
 		}
@@ -92,7 +92,7 @@ func (b *Bot) Start() error {
 
 			wg.Add(1)
 
-			go func() {
+			go func(update tgbotapi.Update) {
 				if err := b.handleCommand(update.Message); err != nil {
 					log.Println(err)
 					b.handleError(update.Message)
@@ -101,7 +101,7 @@ func (b *Bot) Start() error {
 				wg.Done()
 
 				<-semaphore
-			}()
+			}(update)
 		}
 	}
 

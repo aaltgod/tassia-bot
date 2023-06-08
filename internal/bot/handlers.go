@@ -55,7 +55,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 			if err != nil {
 				log.Println(err)
 
-				result = "InternalError"
+				result = InternalError
 			} else {
 				result = response
 			}
