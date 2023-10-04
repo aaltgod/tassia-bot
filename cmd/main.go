@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -14,20 +13,20 @@ import (
 	b "github.com/aaltgod/tassia-bot/internal/bot"
 	chatGPT "github.com/aaltgod/tassia-bot/internal/chat-gpt"
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
+	"github.com/aaltgod/tassia-bot/pkg/temperature"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/joho/godotenv"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
-	"github.com/uptrace/bun/extra/bundebug"
 )
 
 func main() {
 	log.Println("Start")
 
 	var (
-		ctx          = context.Background()
-		maxOpenConns = 4 * runtime.GOMAXPROCS(0)
+		ctx = context.Background()
+		// maxOpenConns = 4 * runtime.GOMAXPROCS(0)
 	)
 
 	err := godotenv.Load(".env")
@@ -42,22 +41,22 @@ func main() {
 	)
 	pgdb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 	db := bun.NewDB(pgdb, pgdialect.New())
-	if err = db.Ping(); err != nil {
-		log.Fatal(err)
-	}
+	// if err = db.Ping(); err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-	db.SetMaxOpenConns(maxOpenConns)
-	db.SetMaxIdleConns(maxOpenConns)
+	// db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	// db.SetMaxOpenConns(maxOpenConns)
+	// db.SetMaxIdleConns(maxOpenConns)
 
 	storage := postgres.NewStorage(db)
 
-	if err = storage.PrepareTables(ctx); err != nil {
-		log.Fatalln(err)
-	}
-	if err := storage.PrepareArchiveTable(ctx); err != nil {
-		log.Fatal(err)
-	}
+	// if err = storage.PrepareTables(ctx); err != nil {
+	// 	log.Fatalln(err)
+	// }
+	// if err := storage.PrepareArchiveTable(ctx); err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	botApi, err := tgbotapi.NewBotAPI(os.Getenv("API_TOKEN"))
 	if err != nil {
@@ -89,6 +88,7 @@ func main() {
 		ctx,
 		5*time.Second,
 		chatGPT.New(os.Getenv("CHAT_GPT_TOKEN"), verifiedUserIDs),
+		temperature.New(os.Getenv("OPEN_WEATHER_API_KEY")),
 		botApi,
 		storage,
 		storage,

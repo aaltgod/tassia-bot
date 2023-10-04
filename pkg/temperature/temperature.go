@@ -1,16 +1,35 @@
 package temperature
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
-
-	"github.com/PuerkitoBio/goquery"
+	"strings"
+	"time"
 )
 
-func GetMoscowTemperature() (string, error) {
+type Client struct {
+	client *http.Client
 
-	resp, err := http.Get("https://yandex.ru/pogoda/?lat=55.85489273&lon=37.47623444")
+	apiKey string
+}
+
+func New(apiKey string) *Client {
+
+	return &Client{
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+		apiKey: apiKey,
+	}
+}
+
+func (c *Client) GetMoscowTemperature() (string, error) {
+	resp, err := c.client.Get(
+		"https://api.openweathermap.org/data/2.5/weather?lat=55.85488892&lon=37.47623062&units=metric&lang=ru&appid=" + c.apiKey)
 	if err != nil {
 		log.Println(err)
 		return "", err
@@ -22,18 +41,44 @@ func GetMoscowTemperature() (string, error) {
 		return "", fmt.Errorf("%s", "error response")
 	}
 
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
 		return "", err
 	}
 
-	result := doc.Find("div.link__feelings.fact__feelings").Find(
-		"div.link__condition.day-anchor").Text()
-	result += "\nТекущая температура: " + doc.Find("div.temp.fact__temp.fact__temp_size_s").Find(
-		"span.temp__value.temp__value_with-unit").Text() + "°"
-	result += "\nОщущается как: " + doc.Find("div.link__feelings.fact__feelings").Find(
-		"span.temp__value.temp__value_with-unit").Text() + "°"
+	var response Response
 
-	return result, nil
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf(`%s
+Текущая температура: %d°
+Ощущается как: %d°
+Ветер: %d м/с
+	`, strings.ToTitle(response.Weather[0].Description),
+		int64(math.Round(response.Main.Temp)),
+		int64(math.Round(response.Main.FeelsLike)),
+		int64(math.Round(response.Wind.Speed)),
+	), nil
+}
+
+type Response struct {
+	Weather []Weather `json:"weather"`
+	Main    Main      `json:"main"`
+	Wind    Wind      `json:"wind"`
+}
+
+type Weather struct {
+	Description string `json:"description"`
+}
+type Main struct {
+	Temp      float64 `json:"temp"`
+	FeelsLike float64 `json:"feels_like"`
+	TempMin   float64 `json:"temp_min"`
+	TempMax   float64 `json:"temp_max"`
+}
+
+type Wind struct {
+	Speed float64 `json:"speed"`
 }

@@ -8,6 +8,7 @@ import (
 
 	chatGPT "github.com/aaltgod/tassia-bot/internal/chat-gpt"
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
+	"github.com/aaltgod/tassia-bot/pkg/temperature"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -22,6 +23,7 @@ type Bot struct {
 	tickerTimeDuration time.Duration
 
 	chatGPT     *chatGPT.Client
+	tempClient  *temperature.Client
 	botApi      *tgbotapi.BotAPI
 	statStorage postgres.StatStorage
 	dateStorage postgres.DateStorage
@@ -32,6 +34,7 @@ func NewBot(
 	ctx context.Context,
 	tickerTimeDuration time.Duration,
 	chatGPT *chatGPT.Client,
+	tempClient *temperature.Client,
 	botApi *tgbotapi.BotAPI,
 	statStorage postgres.StatStorage,
 	dateStorage postgres.DateStorage,
@@ -42,6 +45,7 @@ func NewBot(
 		ticker:             time.NewTicker(tickerTimeDuration),
 		tickerTimeDuration: tickerTimeDuration,
 		chatGPT:            chatGPT,
+		tempClient:         tempClient,
 		botApi:             botApi,
 		statStorage:        statStorage,
 		dateStorage:        dateStorage,

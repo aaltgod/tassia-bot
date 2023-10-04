@@ -14,7 +14,6 @@ import (
 	msgconstructor "github.com/aaltgod/tassia-bot/internal/message-constructor"
 	postgres "github.com/aaltgod/tassia-bot/internal/storage"
 	sunsetsunrise "github.com/aaltgod/tassia-bot/pkg/sunset-sunrise"
-	"github.com/aaltgod/tassia-bot/pkg/temperature"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -80,7 +79,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 
 		msg = tgbotapi.NewMessage(message.Chat.ID, out.String())
 	case "t":
-		temp, err := temperature.GetMoscowTemperature()
+		temp, err := b.tempClient.GetMoscowTemperature()
 		if err != nil {
 			return err
 		}
